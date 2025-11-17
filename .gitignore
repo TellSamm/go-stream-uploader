@@ -30,3 +30,7 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Local large test files (do NOT push big test files to repo)
+testfiles/bigfile.bin
+uploaded_bigfile.bin
