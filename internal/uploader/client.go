@@ -6,7 +6,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -17,18 +16,20 @@ type Uploader struct {
 
 func (u *Uploader) UploadFile(filePath string) error {
 	file, err := os.Open(filePath)
+	defer file.Close()
+
 	if err != nil {
 		return fmt.Errorf("cannot open file: %v", err)
 	}
 
 	pr, pw := io.Pipe()
 	mw := multipart.NewWriter(pw)
+	contentType := mw.FormDataContentType()
 
 	go func() {
 		defer pw.Close()
-		defer file.Close()
 
-		part, err := mw.CreateFormFile("file", filepath.Base(filePath))
+		part, err := mw.CreateFormFile("file", contentType)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 			return
