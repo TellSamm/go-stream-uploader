@@ -1,4 +1,4 @@
-package client
+package main
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 func main() {
 	u := uploader.NewUploader("http://localhost:8080/upload")
 
-	err := u.UploadFile("testfiles/bigfile.bin")
+	err := u.UploadFile("testfiles/bigfile_5gb.bin")
 	if err != nil {
 		fmt.Println("Upload error:", err)
 	}

@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -11,8 +12,9 @@ import (
 )
 
 type Uploader struct {
-	URL     string
-	Timeout int
+	URL            string
+	ConnectTimeout time.Duration //решил сделать на установку TCP соединения исключительно
+	UploadTimeout  time.Duration
 }
 
 func (u *Uploader) UploadFile(filePath string) error {
@@ -21,6 +23,9 @@ func (u *Uploader) UploadFile(filePath string) error {
 		return fmt.Errorf("cannot open file: %v", err)
 	}
 	defer file.Close()
+
+	connectCtx, cancel := context.WithTimeout(context.Background(), u.ConnectTimeout)
+	defer cancel()
 
 	pr, pw := io.Pipe()
 	mw := multipart.NewWriter(pw)
@@ -50,17 +55,20 @@ func (u *Uploader) UploadFile(filePath string) error {
 		errChan <- nil
 	}()
 
-	req, err := http.NewRequest("POST", u.URL, pr)
+	req, err := http.NewRequestWithContext(connectCtx, "POST", u.URL, pr)
 	if err != nil {
 		return fmt.Errorf("cannot create request: %v", err)
 	}
 	req.Header.Set("Content-Type", contentType)
 
 	client := &http.Client{
-		Timeout: time.Duration(u.Timeout) * time.Second,
+		Timeout: u.UploadTimeout, //не ставил контекст пусть льет сколько нужно
 	}
 	resp, err := client.Do(req)
 	if err != nil {
+		if connectCtx.Err() != nil {
+			return fmt.Errorf("connection timeout after %v: %w", u.ConnectTimeout, err)
+		}
 
 		select {
 		case writeErr := <-errChan:
